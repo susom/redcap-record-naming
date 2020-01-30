@@ -1,0 +1,64 @@
+{
+  "name": "Record Naming Tool",
+  "namespace": "Stanford\\RecordNaming",
+  "description": "Customize record names",
+  "versions": [
+    {
+      "0.1": "Initial"
+    }
+  ],
+  "authors": [
+    {
+      "name": "Lee Ann Yasukawa",
+      "email": "yasukawa@stanfordhealthcare.org",
+      "institution": "Stanford Health Care"
+    }
+  ],
+  "permissions": [
+    "redcap_add_edit_records_page",
+    "redcap_every_page_before_render"
+  ],
+  "links": {
+    "control-center": [
+    ],
+    "project": [
+    ]
+  },
+  "no-auth-pages": [
+  ],
+  "crons": [
+  ],
+  "system-settings": [
+    {
+      "key": "enable-system-debug-logging",
+      "name": "<b>Enable Debug Logging</b><br>If you have the Stanford emLogger external module installed and configured, you can enable additional debug-level logging through this checkbox</b>",
+      "required": false,
+      "type": "checkbox"
+    }
+  ],
+  "project-settings": [
+    {
+      "key": "description",
+      "name": "<b>This EM will automate the naming of records to allow constant record name size. If this project utilizes DAGs, the format of the record name will be either <br><br>{DAG ID}-{record number left padded to digit size} or<br> {DAG name}-{record number left padded to digit size}. <br><br>If DAGs are not used, only the Digit Size field is used - Use DAG name is ignored.</b>",
+      "type": "descriptive"
+    },
+    {
+      "key": "enable-project-debug-logging",
+      "name": "<b>Enable Debug Logging</b>",
+      "required": false,
+      "type": "checkbox"
+    },
+    {
+      "key": "record-numeric-size",
+      "name": "<h6><span class='text-lg badge badge-lg badge-success'>Number padding size</span></h6>Number of total characters that will be used to create the number portion of the record name. The integer will be left-padded with 0s to maintain this size. (i.e 4 would mean the first record numeric portion will be 0001.",
+      "required": false,
+      "type": "text"
+    },
+    {
+      "key": "use-dag-name",
+      "name": "<h6><span class='text-lg badge badge-lg badge-success'>Use DAG name</span></h6>When checked, the record name will use the DAG label instead of the DAG ID. For instance, if the DAG name is stanford and the DAG ID is 12, when this checkbox is checked, the record name will be stanford-0001. When not checked the record number will be 12-0001. If DAGs are not used in this project, this field is ignored.",
+      "required": false,
+      "type": "checkbox"
+    }
+  ]
+}
