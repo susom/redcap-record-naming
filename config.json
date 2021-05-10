@@ -1,22 +1,28 @@
 {
   "name": "Record Naming Tool",
   "namespace": "Stanford\\RecordNaming",
-  "description": "Customize record names",
+  "description": "Customize record names with padding and with DAG properties",
   "versions": [
     {
       "0.1": "Initial"
     }
   ],
+  "framework-version": 5,
   "authors": [
     {
       "name": "Lee Ann Yasukawa",
       "email": "yasukawa@stanfordhealthcare.org",
       "institution": "Stanford Health Care"
+    },
+    {
+      "name": "Andrew Martin",
+      "email": "andy123@stanfordhealthcare.org",
+      "institution": "Stanford Medicine"
     }
   ],
   "permissions": [
     "redcap_add_edit_records_page",
-    "redcap_every_page_before_render"
+    "redcap_every_page_top"
   ],
   "links": {
     "control-center": [
@@ -43,12 +49,6 @@
       "type": "descriptive"
     },
     {
-      "key": "enable-project-debug-logging",
-      "name": "<b>Enable Debug Logging</b>",
-      "required": false,
-      "type": "checkbox"
-    },
-    {
       "key": "record-numeric-size",
       "name": "<h6><span class='text-lg badge badge-lg badge-success'>Number padding size</span></h6>Number of total characters that will be used to create the number portion of the record name. The integer will be left-padded with 0s to maintain this size. (i.e 4 would mean the first record numeric portion will be 0001.",
       "required": false,
@@ -57,6 +57,12 @@
     {
       "key": "use-dag-name",
       "name": "<h6><span class='text-lg badge badge-lg badge-success'>Use DAG name</span></h6>When checked, the record name will use the DAG label instead of the DAG ID. For instance, if the DAG name is stanford and the DAG ID is 12, when this checkbox is checked, the record name will be stanford-0001. When not checked the record number will be 12-0001. If DAGs are not used in this project, this field is ignored.",
+      "required": false,
+      "type": "checkbox"
+    },
+    {
+      "key": "enable-project-debug-logging",
+      "name": "<b>Enable Debug Logging</b>",
       "required": false,
       "type": "checkbox"
     }

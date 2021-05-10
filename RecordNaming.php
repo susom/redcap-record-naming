@@ -1,10 +1,10 @@
 <?php
 namespace Stanford\RecordNaming;
 
-use ExternalModules\ExternalModules;
 use \REDCap;
 
 require_once "emLoggerTrait.php";
+
 
 /**
  * Class RecordNaming
@@ -47,7 +47,7 @@ class RecordNaming extends \ExternalModules\AbstractExternalModule
      *
      * @param $project_id
      */
-    function redcap_every_page_before_render($project_id) {
+    function redcap_every_page_top($project_id) {
 
         if (PAGE === 'DataEntry/record_status_dashboard.php') {
             $newRecordURL = $this->overrideNewRecordButton("Dashboard");
@@ -102,7 +102,7 @@ class RecordNaming extends \ExternalModules\AbstractExternalModule
                         parent.innerHTML = '<button class="btn btn-xs btn-rcgreen fs13" onclick="getNewRecordName()">' +
                                             '    <i class="fas fa-plus"></i> Add new record' +
                                             '    <input type="hidden" id="url" value="' + url + '">' +
-                                            '</button>';
+                                            '</button> <div style="font-size:10px;font-weight:normal;color:#555;">Uses Record Naming EM</div>';
                     }
                 }
             };
@@ -155,16 +155,23 @@ class RecordNaming extends \ExternalModules\AbstractExternalModule
                 for (var ncnt = 0; ncnt < parentDiv.length; ncnt++) {
                     var childDiv = parentDiv[ncnt];
                     if (childDiv.innerHTML.includes('Auto-numbering for records')) {
+                        if (childDiv.innerHTML.includes('Enable')) {
+                            // Auto-numbering must be enabled for this to work.
+                            var string = childDiv.innerHTML;
+                            var newString = string.replace(' Auto-numbering for records', ' You must click ENABLE to use the Record Numbering by External Module feature');
+                            childDiv.innerHTML = newString;
 
-                        // Change the label so users know why they can't select auto-numbering
-                        var string = childDiv.innerHTML;
-                        var newString = string.replace(' Auto-numbering for records', ' Numbering by External Module');
-                        childDiv.innerHTML = newString;
+                        } else {
+                            // Change the label so users know why they can't select auto-numbering
+                            var string = childDiv.innerHTML;
+                            var newString = string.replace(' Auto-numbering for records', ' Numbering by External Module - deactivate EM to change setting');
+                            childDiv.innerHTML = newString;
 
-                        // Disable the button so users cannot select auto-numbering
-                        var button = childDiv.getElementsByTagName('button');
-                        button[0].disabled = true;
-                  }
+                            // Disable the button so users cannot select auto-numbering
+                            var button = childDiv.getElementsByTagName('button');
+                            button[0].disabled = true;
+                        }
+                    }
                 }
 
             };

@@ -18,6 +18,13 @@ EM is active, the Auto-numbering option on the Project Setup page will be disabl
 'Record Naming EM is active'.
 
 
+## Note about simultaneous record creation
+If two users click 'add record' at the same time, they both will be opened to new records with the same proposed ID
+ (e.g. `STAN-001`).  When the first user presses 'save', they will get this ID.  When the second user presses save,
+  they will be assigned to the next numerical auto-numbering id possible (e.g. 14).  So, if you see a numerical ID
+  created that does not match your desired sequence, this is likely what happened.
+
+
 # Future Enhancements
 Proposed future enhancements **(in no particular order)** are
 
@@ -31,3 +38,7 @@ Proposed future enhancements **(in no particular order)** are
 * Add the ability to support public surveys when they are the first instrument in the project
 
 * Add support for naming arms when used in the project.
+
+## Change Log
+
+* 2021-05-04 Updated the code to use the new reserveRecordId method

@@ -1,6 +1,6 @@
 <?php
 namespace Stanford\RecordNaming;
-/** @var \Stanford\RecordNaming\RecordNaming $module **/
+/** @var RecordNaming $module **/
 
 /**
  * This is the API endpoint called when users select the 'Add new record' button from either the record Dashboard
@@ -12,35 +12,36 @@ namespace Stanford\RecordNaming;
  */
 
 use REDCap;
-global $userid;
+// global $userid;
 $msg = null;
 $recordHome = null;
 $return_status = array();
 $return_status["status"] = 0;
 
 
-$pid = isset($_GET['pid']) && !empty($_GET['pid']) ? $_GET['pid'] : null;
+$pid = $module->getProjectId();
+$user = $module->getUser();
+$userid = $user->getUsername();
 $module->emDebug("PID from RecordNamingNextRecord is " . $pid . ", and user is " . $userid);
 
 // Retrieve locations on where to store the data
 $projSettings = $module->getProjectSettings();
-$numberPaddingSize = $projSettings["record-numeric-size"]["value"];
+$numberPaddingSize = $projSettings["record-numeric-size"];
 
 // If the DAG is desired instead of the DAG ID, retrieve the name for this ID.
-$useDagName = $projSettings["use-dag-name"]["value"];
+$useDagName = $projSettings["use-dag-name"];
 
 // Find the name of the record id field
 $recordFieldName = REDCap::getRecordIdField();
 
 // If the user rights is empty, this user should not be in this project
-$allUserRights = REDCap::getUserRights($userid);
+$userRights = $user->getRights();
 
-$userRights = $allUserRights[$userid];
 if (empty($userRights)) {
     $msg = "User $userid does not have access to this project";
     $module->emError($msg);
     $return_status["error"] = $msg;
-    print json_encode($return_status);
+    die(json_encode($return_status));
 }
 
 // Check to see if the user has privilege to create a new record
@@ -48,7 +49,7 @@ if (!$userRights['record_create']) {
     $msg = "User $userid does not have privileges to create a new record";
     $module->emError($msg);
     $return_status["error"] = $msg;
-    print json_encode($return_status);
+    die(print json_encode($return_status));
 }
 
 // Retrieve the DAG that this person belongs to
@@ -62,17 +63,18 @@ if (($useDagName) and (is_numeric($dagId))) {
 // Create a new record in this project using the format DAG-0004 with the number of padding characters coming from the config file.
 // Find the next record ID to use for the new record
 list($status, $newRecordID, $error_msg) = findNextRecordNumber($pid, $groupId, $numberPaddingSize, $recordFieldName);
-$module->emDebug("New record number for project $pid: " . $newRecordID);
+
+$module->emDebug("New record result: $status with " . $newRecordID);
 
 if ($status == 1) {
-    // URL of new record
-    $return_status["url"] = $_SERVER["HTTP_ORIGIN"] . APP_PATH_WEBROOT . 'DataEntry/record_home.php?pid=' .$pid . '&id=' . $newRecordID;
-    $return_status["status"] = $status;
+	// URL of new record
+	$return_status["url"] = APP_PATH_WEBROOT_FULL."redcap_v".REDCAP_VERSION.'/DataEntry/record_home.php?pid=' .$pid . '&id=' . $newRecordID;
+	$return_status["status"] = $status;
 } else {
-    $return_status["error"] = $error_msg;
+	$return_status["error"] = $error_msg;
 }
-
 print json_encode($return_status);
+
 
 
 /**
@@ -88,98 +90,98 @@ print json_encode($return_status);
 function findNextRecordNumber($projectId, $recordPrefix, $numberPaddingSize, $recordFieldName) {
     global $module;
 
-    $error_msg = null;
-    $status = 1;
-    $newRecordLabel = null;
     $recordFieldArray = array($recordFieldName);
-    $module->emDebug("Record prefix: " . $recordPrefix);
 
-    // If there is no prefix given (like a DAG ID which means this person does not belong to a DAG), retrieve all records
-    // and we will have to go through the list manually
-    if (is_null($recordPrefix) or empty($recordPrefix)) {
+    // Cast empty prefix to a string
+    $recordPrefix = empty($recordPrefix) ? "" : $recordPrefix . "-";
 
-        // Retrieve all records
-        $allRecordIDs = REDCap::getData($projectId, 'array', null, $recordFieldArray);
+	// Retrieve all records
+	$allRecordIDs = REDCap::getData($projectId, 'array', null, $recordFieldArray);
 
-        // Loop over the records that are already created and look for the records that fit our criteria
-        $numArray = array();
-        foreach($allRecordIDs as $recordNum => $recordInfo) {
+	// Try to get the 'starting number' for the next record based on presence or absence of prefix
+	// This is a bit slow as it loops through all records...
+	$numArray = array();
+	foreach($allRecordIDs as $recordId => $events) {
+		// Go through each record and pull out the ones that are numeric so we can find the highest number record already created.
+		$thisRecord = null;
+		if (!empty($recordPrefix)) {
+			// Does record_id start with the prefix - if so, sub it out
+			if(strpos(strtoupper($recordId), $recordPrefix) === 0) {
+				$thisRecord = trim(intval(substr($recordId, strlen($recordPrefix))));
+			}
+		} else {
+			$thisRecord = $recordId;
+		}
 
-            // Go through each record and pull out the ones that are numeric so we can find the highest number record already created.
-            if (is_numeric($recordNum)) {
-                $numArray[] = $recordNum;
-            }
-        }
+		if (is_numeric($thisRecord)) {
+			$numArray[] = $thisRecord;
+		}
+	}
 
-        // Find the biggest number record that is already created
-        if (($numArray == null) or empty($numArray)) {
-            $biggestNumber = 0;
-        } else {
-            // Find the largest numbered record that is already created
-            $biggestNumber = ltrim(intval(max($numArray)));
-        }
+	$biggestNumber = empty($numArray) ? 0 : max($numArray);
+	$module->emDebug("Largest numeric record of " . count($numArray) . " records with prefix [$recordPrefix] is " . $biggestNumber);
 
-    } else {
 
-        // This section is for records that belong to a DAG and we need to add the DagID or Dag Name to the record
-        $filter = "starts_with([" . $recordFieldName . "],'" . $recordPrefix . "')";
-        $module->emDebug("Filter: " . $filter);
-        $recordIDs = REDCap::getData($projectId, 'array', null, $recordFieldArray, null, null, null, null, null, $filter);
+	// To handle issues where two users are simultaneously creating new records, we will reserve the next available record
+	// Unless we have exceeded the maximum size permitted.
+	$largestNumberAvail = intval(str_repeat("9", $numberPaddingSize));
 
-        // If there are records with this prefix, start numbering at 0 so the record will be 1.
-        if (($recordIDs == '') or empty($recordIDs)) {
-            $biggestNumber = 0;
-        } else {
+	$maxTries = 10;
+	$try = 0;
+	$nextRecord = '';
+	$error_msg = null;
+	$status = null;
 
-            // There were records already created with this prefix, find what the largest number is
-            $biggestRecord = max(array_keys($recordIDs));
-            $module->emDebug("Biggest current record: " . $biggestRecord);
-            $length = strlen($biggestRecord);
+	while ($try++ < $maxTries) {
+		$thisNum = $biggestNumber + $try;
+		$newRecordNumber = str_pad($thisNum, $numberPaddingSize, '0', STR_PAD_LEFT);
+		$nextRecord = $recordPrefix . $newRecordNumber;
 
-            // Extract the number portion of the record
-            $biggestNumber = ltrim(intval(substr($biggestRecord, strlen($recordPrefix) + 1)));
-        }
-    }
+		if ($thisNum > $largestNumberAvail && $largestNumberAvail > 0) {
+			$error_msg = "New record value of $nextRecord has numerical portion greater than padding size of $largestNumberAvail.";
+			$status = 0;
+			break;
+		}
 
-    // Check the value of the max existing record to make sure this portion is numeric
-    if (is_numeric($biggestNumber)) {
+		if (isset($allRecordIDs[$nextRecord])) {
+			$error_msg = "Proposed next record, $nextRecord, already exists.  This shouldn't happen.";
+			$module->emDebug($error_msg);
+			continue;
+		}
 
-        // See if this value should be padded. If number_padding_size is not set, just use the number as is.
-        if (($numberPaddingSize == null) or (empty($numberPaddingSize))) {
-            $newRecordNumber = ++$biggestNumber;
-        } else {
+		$status = 1;
+		break;
+		// I wanted to reserve the ID, but had to remove this as REDCap will not let you save to this ID unless you
+		// create it after reserving it in your code.  I don't want to create a new record each time if the user
+		// doesn't press save
+		// if ($autoCreate) {
+		// 	$reserved = REDCap::reserveNewRecordId($projectId,$nextRecord);
+		// 	if ($reserved) {
+		// 		$payload = [
+		// 			"project_id" => $projectId,
+		// 			"dataFormat" => 'json',
+		// 			"data" => json_encode([
+		// 				[
+		// 					$recordFieldName => $nextRecord,
+		// 					"redcap_event_name" =>
+		// 				]
+		// 			])
+		// 			];
+		//
+		// 		REDCap::saveData($projectId, 'array', [[$nextRecord => ]])
+		// $status = 1;
+		// break;
+			// } else {
+			// 	$module->emDebug("Unable to reserve record $nextRecord - must be in use by another process.");
+			// }
+		// }
+	}
 
-            // Find out what the largest number possible is
-            $largestNumberAvail = '';
-            for ($ncnt = 0; $ncnt < $numberPaddingSize; $ncnt++) {
-                $largestNumberAvail .= '9';
-            }
+	if (is_null($status)) {
+		// Exceeded maxTries
+		$status = 0;
+		$error_msg = "Exceeded $maxTries tries to find the next record after $biggestNumber - see logs for details.";
+	}
 
-            // Make sure that adding 1 to the number, does not overflow the size
-            $maxAvailNum = intval($largestNumberAvail);
-            $nextNumValue = ++$biggestNumber;
-            if ($maxAvailNum >= $nextNumValue) {
-                $newRecordNumber = str_pad($nextNumValue, $numberPaddingSize, '0', STR_PAD_LEFT);
-            } else {
-                $error_msg = "New record value of $nextNumValue is greater than the allotted size of $largestNumberAvail.";
-                $status = 0;
-            }
-        }
-
-        // Add the record prefix to the number
-        if ($status == 1) {
-            if (($recordPrefix == null) or (empty($recordPrefix))) {
-                $newRecordLabel = $newRecordNumber;
-            } else {
-                $newRecordLabel = $recordPrefix . '-' . $newRecordNumber;
-            }
-        }
-
-    } else {
-        $error_msg = "Expecting numbers for last portion of record ID $biggestNumber and it is not numeric";
-        $module->emError($error_msg);
-        $status = 0;
-    }
-
-    return array($status, $newRecordLabel, $error_msg);
+	return array($status, $nextRecord, $error_msg);
 }
