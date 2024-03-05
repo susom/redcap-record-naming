@@ -146,6 +146,12 @@ function findNextRecordNumber($projectId, $recordPrefix, $numberPaddingSize, $re
 		if (isset($allRecordIDs[$nextRecord])) {
 			$error_msg = "Proposed next record, $nextRecord, already exists.  This shouldn't happen.";
 			$module->emDebug($error_msg);
+
+            // workaround if record id appended with DAG keep going and ignore $maxTries
+            if(empty($numArray)){
+                $maxTries++;
+            }
+
 			continue;
 		}
 
